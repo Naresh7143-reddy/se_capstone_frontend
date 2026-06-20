@@ -29,6 +29,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm text-muted md:flex">
+          <Link to="/compiler" className="hover:text-fg transition">Compiler</Link>
           <a href="/#features" className="hover:text-fg transition">Features</a>
           <a href="/#pricing" className="hover:text-fg transition">Pricing</a>
           <a href="/#faq" className="hover:text-fg transition">FAQ</a>

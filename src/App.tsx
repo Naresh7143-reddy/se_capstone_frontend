@@ -8,6 +8,7 @@ import { FullPageSpinner } from '@/components/ui/Spinner';
 const Landing = lazy(() => import('@/pages/Landing'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
+const Compiler = lazy(() => import('@/pages/Compiler'));
 const Overview = lazy(() => import('@/pages/dashboard/Overview'));
 const Classrooms = lazy(() => import('@/pages/dashboard/Classrooms'));
 const Submissions = lazy(() => import('@/pages/dashboard/Submissions'));
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/compiler" element={<Compiler />} />
 
             <Route
               path="/dashboard"
