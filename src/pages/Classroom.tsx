@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { CodeEditor } from '@/components/CodeEditor';
 
 interface Participant {
   user_id: string;
@@ -169,13 +170,9 @@ export default function Classroom() {
       <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[1fr_320px]">
         {/* Editor + output */}
         <div className="flex flex-col overflow-hidden border-r border-border">
-          <textarea
-            value={code}
-            onChange={(e) => handleCodeChange(e.target.value)}
-            spellCheck={false}
-            className="flex-1 resize-none bg-bg p-4 font-mono text-sm text-fg outline-none"
-            style={{ minHeight: '50%' }}
-          />
+          <div className="flex-1 overflow-hidden">
+            <CodeEditor value={code} language={language} onChange={handleCodeChange} />
+          </div>
           <div className="h-44 overflow-auto border-t border-border bg-surface/40 p-4">
             <p className="mb-2 text-xs font-semibold uppercase text-muted">Output</p>
             <pre className="whitespace-pre-wrap font-mono text-sm">{output || '—'}</pre>
