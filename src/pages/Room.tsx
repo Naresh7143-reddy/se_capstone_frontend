@@ -24,6 +24,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { CodeEditor } from '@/components/CodeEditor';
 import { CodeDiff } from '@/components/CodeDiff';
+import { VideoCall } from '@/components/VideoCall';
+import { Video } from 'lucide-react';
 
 interface Member {
   user_id: string;
@@ -88,6 +90,7 @@ export default function Room() {
   const [running, setRunning] = useState(false);
   const [toast, setToast] = useState('');
   const [connected, setConnected] = useState(false);
+  const [inCall, setInCall] = useState(false);
 
   // Chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -246,6 +249,13 @@ export default function Room() {
           <Button size="sm" onClick={() => setShowCommit((s) => !s)}>
             <GitCommit size={16} /> Propose commit
           </Button>
+          <Button
+            size="sm"
+            variant={inCall ? 'primary' : 'outline'}
+            onClick={() => setInCall((c) => !c)}
+          >
+            <Video size={16} /> {inCall ? 'Leave call' : 'Join call'}
+          </Button>
           <ThemeToggle />
         </div>
       </header>
@@ -271,6 +281,13 @@ export default function Room() {
               <Button size="sm" onClick={propose}>Propose</Button>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Video call bar */}
+      <AnimatePresence>
+        {inCall && roomId && (
+          <VideoCall roomId={roomId} userName={userName} onLeave={() => setInCall(false)} />
         )}
       </AnimatePresence>
 
