@@ -13,7 +13,7 @@ const Overview = lazy(() => import('@/pages/dashboard/Overview'));
 const Classrooms = lazy(() => import('@/pages/dashboard/Classrooms'));
 const Submissions = lazy(() => import('@/pages/dashboard/Submissions'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
-const Classroom = lazy(() => import('@/pages/Classroom'));
+const Room = lazy(() => import('@/pages/Room'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 export default function App() {
@@ -45,7 +45,7 @@ export default function App() {
               path="/classroom/:id"
               element={
                 <ProtectedRoute>
-                  <Classroom />
+                  <Room />
                 </ProtectedRoute>
               }
             />
