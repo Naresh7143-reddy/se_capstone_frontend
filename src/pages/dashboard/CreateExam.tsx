@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, Library } from 'lucide-react';
 import api from '@/lib/api';
 import { useClassrooms } from '@/hooks/useClassrooms';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Spinner } from '@/components/ui/Spinner';
+import { LibraryPicker } from '@/components/LibraryPicker';
+import type { LibraryQuestion } from '@/hooks/useLibrary';
 
 interface TC { input: string; expected: string }
 interface QDraft {
@@ -20,6 +23,7 @@ interface QDraft {
   points: number;
   sample_test_cases: TC[];
   hidden_test_cases: TC[];
+  reference_solution: string;
 }
 
 const ALL_LANGS = ['python', 'java', 'cpp'];
@@ -28,6 +32,21 @@ const emptyQ = (): QDraft => ({
   difficulty: 'easy', supported_languages: ['python', 'java', 'cpp'], points: 10,
   sample_test_cases: [{ input: '', expected: '' }],
   hidden_test_cases: [{ input: '', expected: '' }],
+  reference_solution: '',
+});
+
+const fromLibrary = (q: LibraryQuestion): QDraft => ({
+  title: q.title,
+  description: q.problem_statement,
+  input_format: q.input_format || '',
+  output_format: q.output_format || '',
+  constraints: q.constraints || '',
+  difficulty: q.difficulty,
+  supported_languages: ['python', 'java', 'cpp'],
+  points: q.default_points || 10,
+  sample_test_cases: q.sample_test_cases?.length ? q.sample_test_cases : [{ input: '', expected: '' }],
+  hidden_test_cases: q.hidden_test_cases?.length ? q.hidden_test_cases : [{ input: '', expected: '' }],
+  reference_solution: '',
 });
 
 function Textarea({ label, value, onChange, placeholder, rows = 3 }: any) {
@@ -74,6 +93,15 @@ export default function CreateExam() {
   const [questions, setQuestions] = useState<QDraft[]>([emptyQ()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showLibrary, setShowLibrary] = useState(false);
+
+  const addFromLibrary = (libs: LibraryQuestion[]) =>
+    setQuestions((qs) => {
+      const mapped = libs.map(fromLibrary);
+      // Drop a single empty starter question if present.
+      const base = qs.length === 1 && !qs[0].title ? [] : qs;
+      return [...base, ...mapped];
+    });
 
   const update = (i: number, patch: Partial<QDraft>) =>
     setQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
@@ -113,10 +141,21 @@ export default function CreateExam() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold">Create exam</h1>
-        <p className="text-sm text-muted">Add coding questions with test cases. Hidden tests are used for scoring.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold">Create exam</h1>
+          <p className="text-sm text-muted">Add from the library or create custom. Hidden tests are used for scoring.</p>
+        </div>
+        <Button variant="outline" onClick={() => setShowLibrary(true)}>
+          <Library size={16} /> Add from Library
+        </Button>
       </div>
+
+      <AnimatePresence>
+        {showLibrary && (
+          <LibraryPicker onClose={() => setShowLibrary(false)} onAdd={addFromLibrary} />
+        )}
+      </AnimatePresence>
 
       <Card className="space-y-4">
         <div className="space-y-1.5">
@@ -172,6 +211,7 @@ export default function CreateExam() {
 
           <TestCaseEditor label="Sample test cases (shown to students)" cases={q.sample_test_cases} onChange={(c) => update(i, { sample_test_cases: c })} />
           <TestCaseEditor label="Hidden test cases (used for scoring)" cases={q.hidden_test_cases} onChange={(c) => update(i, { hidden_test_cases: c })} />
+          <Textarea label="Reference solution (optional, faculty only)" value={q.reference_solution} onChange={(v: string) => update(i, { reference_solution: v })} placeholder="Model answer — never shown to students" rows={3} />
         </Card>
       ))}
 
