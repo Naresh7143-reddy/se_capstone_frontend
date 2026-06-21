@@ -1,8 +1,30 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle, Download } from 'lucide-react';
 import { useExamResults } from '@/hooks/useExams';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { FullPageSpinner } from '@/components/ui/Spinner';
+
+function exportCsv(data: any) {
+  const { exam, questions, students } = data;
+  const header = ['Student', 'Email', 'Submitted', ...questions.map((q: any, i: number) => `Q${i + 1}`), 'Total', 'Integrity'];
+  const rows = students.map((s: any) => [
+    s.name, s.email, `${s.submitted_count}/${questions.length}`,
+    ...questions.map((q: any) => {
+      const sub = s.submissions[q.id];
+      return !sub ? '-' : sub.flagged ? '0 (flagged)' : sub.score;
+    }),
+    s.total_score, s.flagged ? 'CHEATING' : s.submitted_count > 0 ? 'Clean' : '-',
+  ]);
+  const csv = [header, ...rows].map((r) => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${exam.title.replace(/\s+/g, '_')}_results.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function ExamResults() {
   const { id } = useParams();
@@ -32,8 +54,15 @@ export default function ExamResults() {
         <Link to="/dashboard/exams" className="flex items-center gap-1 text-sm text-primary">
           <ArrowLeft size={14} /> Back to exams
         </Link>
-        <h1 className="mt-2 text-2xl font-extrabold">{exam.title} — Results</h1>
-        <p className="text-sm text-muted">Live results · updates automatically</p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold">{exam.title} — Results</h1>
+            <p className="text-sm text-muted">Live results · updates automatically</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => exportCsv(data)}>
+            <Download size={15} /> Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">

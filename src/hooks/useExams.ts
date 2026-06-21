@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 
+export interface TestCase {
+  input: string;
+  expected: string;
+}
+
 export interface ExamQuestion {
   id: string;
   title: string;
@@ -10,6 +15,13 @@ export interface ExamQuestion {
   starter_code: string;
   points: number;
   position: number;
+  input_format?: string;
+  output_format?: string;
+  constraints?: string;
+  sample_test_cases?: TestCase[];
+  hidden_test_cases?: TestCase[];
+  supported_languages?: string[];
+  tags?: string[];
 }
 
 export interface Exam {

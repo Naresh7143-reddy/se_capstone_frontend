@@ -8,28 +8,65 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Spinner } from '@/components/ui/Spinner';
 
+interface TC { input: string; expected: string }
 interface QDraft {
   title: string;
   description: string;
+  input_format: string;
+  output_format: string;
+  constraints: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  language: string;
+  supported_languages: string[];
   points: number;
-  starter_code: string;
+  sample_test_cases: TC[];
+  hidden_test_cases: TC[];
 }
 
+const ALL_LANGS = ['python', 'java', 'cpp'];
 const emptyQ = (): QDraft => ({
-  title: '',
-  description: '',
-  difficulty: 'easy',
-  language: 'python',
-  points: 10,
-  starter_code: '',
+  title: '', description: '', input_format: '', output_format: '', constraints: '',
+  difficulty: 'easy', supported_languages: ['python', 'java', 'cpp'], points: 10,
+  sample_test_cases: [{ input: '', expected: '' }],
+  hidden_test_cases: [{ input: '', expected: '' }],
 });
+
+function Textarea({ label, value, onChange, placeholder, rows = 3 }: any) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium">{label}</label>
+      <textarea
+        value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows}
+        className="w-full resize-none rounded-xl border border-border bg-bg p-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </div>
+  );
+}
+
+function TestCaseEditor({ label, cases, onChange }: { label: string; cases: TC[]; onChange: (c: TC[]) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium">{label}</label>
+        <button onClick={() => onChange([...cases, { input: '', expected: '' }])} className="text-xs text-primary">+ add</button>
+      </div>
+      {cases.map((tc, i) => (
+        <div key={i} className="flex gap-2">
+          <textarea value={tc.input} onChange={(e) => onChange(cases.map((c, idx) => idx === i ? { ...c, input: e.target.value } : c))}
+            placeholder="stdin" rows={2} className="flex-1 resize-none rounded-lg border border-border bg-bg p-2 font-mono text-xs outline-none" />
+          <textarea value={tc.expected} onChange={(e) => onChange(cases.map((c, idx) => idx === i ? { ...c, expected: e.target.value } : c))}
+            placeholder="expected output" rows={2} className="flex-1 resize-none rounded-lg border border-border bg-bg p-2 font-mono text-xs outline-none" />
+          {cases.length > 1 && (
+            <button onClick={() => onChange(cases.filter((_, idx) => idx !== i))} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CreateExam() {
   const navigate = useNavigate();
   const { data: classrooms } = useClassrooms();
-  const owned = (classrooms || []).filter((c) => true); // owner check is server-side
 
   const [classroomId, setClassroomId] = useState('');
   const [title, setTitle] = useState('');
@@ -41,6 +78,14 @@ export default function CreateExam() {
   const update = (i: number, patch: Partial<QDraft>) =>
     setQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
 
+  const toggleLang = (i: number, l: string) => {
+    const q = questions[i];
+    const has = q.supported_languages.includes(l);
+    update(i, { supported_languages: has ? q.supported_languages.filter((x) => x !== l) : [...q.supported_languages, l] });
+  };
+
+  const clean = (cs: TC[]) => cs.filter((c) => c.input !== '' || c.expected !== '');
+
   const save = async () => {
     setError('');
     if (!classroomId) return setError('Pick a classroom.');
@@ -48,12 +93,16 @@ export default function CreateExam() {
     if (questions.some((q) => !q.title)) return setError('Every question needs a title.');
     setSaving(true);
     try {
-      const { data } = await api.post('/api/exams', {
-        classroom_id: classroomId,
-        title,
-        duration_minutes: duration,
-        questions,
-      });
+      const payload = {
+        classroom_id: classroomId, title, duration_minutes: duration,
+        questions: questions.map((q) => ({
+          ...q,
+          language: q.supported_languages[0] || 'python',
+          sample_test_cases: clean(q.sample_test_cases),
+          hidden_test_cases: clean(q.hidden_test_cases),
+        })),
+      };
+      const { data } = await api.post('/api/exams', payload);
       navigate(`/exam/${data.data.id}/results`);
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.message || 'Failed to create exam');
@@ -66,30 +115,20 @@ export default function CreateExam() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold">Create exam</h1>
-        <p className="text-sm text-muted">Add coding questions from basic to hard.</p>
+        <p className="text-sm text-muted">Add coding questions with test cases. Hidden tests are used for scoring.</p>
       </div>
 
       <Card className="space-y-4">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Classroom</label>
-          <select
-            value={classroomId}
-            onChange={(e) => setClassroomId(e.target.value)}
-            className="h-11 w-full rounded-xl border border-border bg-bg px-4 text-sm"
-          >
+          <select value={classroomId} onChange={(e) => setClassroomId(e.target.value)}
+            className="h-11 w-full rounded-xl border border-border bg-bg px-4 text-sm">
             <option value="">Select a classroom…</option>
-            {owned.map((c) => (
-              <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-            ))}
+            {(classrooms || []).map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
           </select>
         </div>
         <Input label="Exam title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Midterm — Arrays & Strings" />
-        <Input
-          label="Duration (minutes)"
-          type="number"
-          value={duration}
-          onChange={(e) => setDuration(Number(e.target.value))}
-        />
+        <Input label="Duration (minutes)" type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
       </Card>
 
       {questions.map((q, i) => (
@@ -97,68 +136,50 @@ export default function CreateExam() {
           <div className="flex items-center justify-between">
             <h3 className="font-bold">Question {i + 1}</h3>
             {questions.length > 1 && (
-              <button
-                onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}
-                className="text-muted hover:text-red-500"
-              >
-                <Trash2 size={16} />
-              </button>
+              <button onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))} className="text-muted hover:text-red-500"><Trash2 size={16} /></button>
             )}
           </div>
-          <Input label="Title" value={q.title} onChange={(e) => update(i, { title: e.target.value })} placeholder="Reverse a string" />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Description</label>
-            <textarea
-              value={q.description}
-              onChange={(e) => update(i, { description: e.target.value })}
-              placeholder="Describe the problem, input/output, constraints…"
-              className="h-24 w-full resize-none rounded-xl border border-border bg-bg p-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-            />
+          <Input label="Title" value={q.title} onChange={(e) => update(i, { title: e.target.value })} placeholder="Two Sum" />
+          <Textarea label="Problem statement" value={q.description} onChange={(v: string) => update(i, { description: v })} placeholder="Describe the problem…" rows={4} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Textarea label="Input format" value={q.input_format} onChange={(v: string) => update(i, { input_format: v })} rows={2} />
+            <Textarea label="Output format" value={q.output_format} onChange={(v: string) => update(i, { output_format: v })} rows={2} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <Textarea label="Constraints" value={q.constraints} onChange={(v: string) => update(i, { constraints: v })} rows={2} />
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Difficulty</label>
-              <select
-                value={q.difficulty}
-                onChange={(e) => update(i, { difficulty: e.target.value as QDraft['difficulty'] })}
-                className="h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm"
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+              <select value={q.difficulty} onChange={(e) => update(i, { difficulty: e.target.value as QDraft['difficulty'] })}
+                className="h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm">
+                <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Language</label>
-              <select
-                value={q.language}
-                onChange={(e) => update(i, { language: e.target.value })}
-                className="h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm"
-              >
-                {['python', 'javascript', 'java', 'cpp', 'c'].map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-            </div>
-            <Input
-              label="Points"
-              type="number"
-              value={q.points}
-              onChange={(e) => update(i, { points: Number(e.target.value) })}
-            />
+            <Input label="Points" type="number" value={q.points} onChange={(e) => update(i, { points: Number(e.target.value) })} />
           </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Supported languages</label>
+            <div className="flex gap-2">
+              {ALL_LANGS.map((l) => (
+                <button key={l} onClick={() => toggleLang(i, l)}
+                  className={`rounded-lg px-3 py-1.5 text-xs ${q.supported_languages.includes(l) ? 'bg-primary text-primary-fg' : 'border border-border text-muted'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <TestCaseEditor label="Sample test cases (shown to students)" cases={q.sample_test_cases} onChange={(c) => update(i, { sample_test_cases: c })} />
+          <TestCaseEditor label="Hidden test cases (used for scoring)" cases={q.hidden_test_cases} onChange={(c) => update(i, { hidden_test_cases: c })} />
         </Card>
       ))}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setQuestions((qs) => [...qs, emptyQ()])}>
-          <Plus size={16} /> Add question
-        </Button>
-        <Button onClick={save} disabled={saving}>
-          {saving ? <Spinner className="h-4 w-4" /> : <><Save size={16} /> Create exam</>}
-        </Button>
+        <Button variant="outline" onClick={() => setQuestions((qs) => [...qs, emptyQ()])}><Plus size={16} /> Add question</Button>
+        <Button onClick={save} disabled={saving}>{saving ? <Spinner className="h-4 w-4" /> : <><Save size={16} /> Create exam</>}</Button>
       </div>
     </div>
   );
