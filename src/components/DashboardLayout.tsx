@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   FileCode2,
+  ClipboardList,
   Settings,
   LogOut,
   Code2,
@@ -21,6 +22,7 @@ const nav = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { to: '/dashboard/classrooms', label: 'Classrooms', icon: GraduationCap },
   { to: '/dashboard/submissions', label: 'Submissions', icon: FileCode2 },
+  { to: '/dashboard/exams', label: 'Exams', icon: ClipboardList },
   { to: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
